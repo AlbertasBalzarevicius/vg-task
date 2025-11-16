@@ -1,0 +1,373 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }} - Product Page</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: #f8f9fa;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .product-card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+            overflow: hidden;
+        }
+
+        .product-header {
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        }
+
+        .product-title {
+            font-size: 2.5em;
+            font-weight: 300;
+            margin-bottom: 10px;
+        }
+
+        .product-subtitle {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .product-content {
+            padding: 40px;
+        }
+
+        .parameter-section {
+            margin-bottom: 25px;
+        }
+
+        .parameter-label {
+            font-size: 1.1em;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+        .parameter-select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            background: white;
+            font-size: 16px;
+            color: #495057;
+            transition: border-color 0.2s ease;
+        }
+
+        .parameter-select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .parameter-select:disabled {
+            background-color: #f8f9fa;
+            color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .selection-summary {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .selection-summary h3 {
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+
+        .selection-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .selection-item:last-child {
+            border-bottom: none;
+        }
+
+        .selection-label {
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .selection-value {
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .add-to-cart {
+            width: 100%;
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background-color 0.2s ease;
+        }
+
+        .add-to-cart:hover {
+            background: #218838;
+        }
+
+        .add-to-cart:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .loading {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 10px;
+            }
+
+            .product-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="product-card">
+        <div class="product-header">
+            <h1 class="product-title">{{ product.name }}</h1>
+            <p class="product-subtitle">Configure your perfect product</p>
+        </div>
+
+        <div class="product-content">
+            <div id="parameters-container">
+                <!-- Parameters will be loaded here by JavaScript -->
+            </div>
+
+            <div class="selection-summary">
+                <h3>Your Selection</h3>
+                <div id="selection-display">
+                    <p style="color: #6c757d; font-style: italic;">Please select your options above</p>
+                </div>
+                <button class="add-to-cart" id="add-to-cart-btn" disabled>
+                    Add to Cart
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    class ProductConfigurator {
+        constructor(productId, initialOptions) {
+            this.productId = productId;
+            this.selectedParameters = {};
+            this.currentOptions = initialOptions;
+            this.container = document.getElementById('parameters-container');
+            this.selectionDisplay = document.getElementById('selection-display');
+            this.addToCartBtn = document.getElementById('add-to-cart-btn');
+
+            this.render();
+            this.updateSelectionDisplay();
+        }
+
+        render() {
+            this.container.innerHTML = '';
+
+            Object.entries(this.currentOptions).forEach(([parameterCode, parameterData]) => {
+                const section = document.createElement('div');
+                section.className = 'parameter-section';
+
+                const label = document.createElement('label');
+                label.className = 'parameter-label';
+                label.textContent = parameterData.name + ':';
+                label.setAttribute('for', `select-${parameterCode}`);
+                section.appendChild(label);
+
+                const select = document.createElement('select');
+                select.className = 'parameter-select';
+                select.id = `select-${parameterCode}`;
+                select.dataset.parameterCode = parameterCode;
+
+                // Add default option
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = `-- Select ${parameterData.name} --`;
+                select.appendChild(defaultOption);
+
+                // Add parameter values as options
+                parameterData.values.forEach(value => {
+                    const option = document.createElement('option');
+                    option.value = value.value;
+                    option.textContent = value.name;
+
+                    // Check for selected state from API response
+                    if (value.selected === true) {
+                        option.selected = true;
+                        this.selectedParameters[parameterCode] = value.value;
+                    }
+                    // Fallback to internal state if API doesn't send selected flag
+                    else if (!value.hasOwnProperty('selected') && this.selectedParameters[parameterCode] === value.value) {
+                        option.selected = true;
+                    }
+
+                    // Disable if not available
+                    if (value.available === false) {
+                        option.disabled = true;
+                    }
+
+                    select.appendChild(option);
+                });
+
+                // Add change event listener
+                select.addEventListener('change', (e) => {
+                    this.selectParameter(parameterCode, e.target.value, e.target.selectedOptions[0]?.textContent);
+                });
+
+                section.appendChild(select);
+                this.container.appendChild(section);
+            });
+        }
+
+        async selectParameter(parameterCode, value, name) {
+            // Update selection
+            if (value === '') {
+                // Empty value means deselecting
+                delete this.selectedParameters[parameterCode];
+            } else {
+                this.selectedParameters[parameterCode] = value;
+            }
+
+            // Show loading state
+            this.container.classList.add('loading');
+
+            try {
+                // Fetch updated options
+                const response = await fetch(`/api/products/${this.productId}/parameters`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        parameters: this.selectedParameters
+                    })
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const newOptions = await response.json();
+
+                // Update internal state based on API response
+                this.updateSelectedParametersFromResponse(newOptions);
+
+                this.currentOptions = newOptions;
+                this.render();
+                this.updateSelectionDisplay();
+
+            } catch (error) {
+                console.error('Error fetching parameters:', error);
+                alert('Error loading options. Please try again.');
+            } finally {
+                this.container.classList.remove('loading');
+            }
+        }
+
+        updateSelectedParametersFromResponse(options) {
+            // Update internal state based on what API says is selected
+            this.selectedParameters = {};
+
+            Object.entries(options).forEach(([paramCode, paramData]) => {
+                paramData.values.forEach(value => {
+                    if (value.selected === true) {
+                        this.selectedParameters[paramCode] = value.value;
+                    }
+                });
+            });
+        }
+
+        updateSelectionDisplay() {
+            if (Object.keys(this.selectedParameters).length === 0) {
+                this.selectionDisplay.innerHTML = '<p style="color: #6c757d; font-style: italic;">Please select your options above</p>';
+                this.addToCartBtn.disabled = true;
+                return;
+            }
+
+            let html = '';
+            Object.entries(this.selectedParameters).forEach(([parameterCode, value]) => {
+                const parameterData = this.currentOptions[parameterCode];
+                if (parameterData) {
+                    const valueData = parameterData.values.find(v => v.value === value);
+
+                    html += `
+                                <div class="selection-item">
+                                    <span class="selection-label">${parameterData.name}:</span>
+                                    <span class="selection-value">${valueData ? valueData.name : value}</span>
+                                </div>
+                            `;
+                }
+            });
+
+            this.selectionDisplay.innerHTML = html;
+
+            // Enable add to cart if we have selections for all parameters
+            const allParametersSelected = Object.keys(this.currentOptions).every(code =>
+                this.selectedParameters[code]
+            );
+            this.addToCartBtn.disabled = !allParametersSelected;
+        }
+    }
+
+    // Initialize the configurator when the page loads
+    document.addEventListener('DOMContentLoaded', function() {
+        const initialOptions = {{ initialOptions|json_encode|raw }};
+        console.log('Initial options:', initialOptions);
+
+        if (!initialOptions || Object.keys(initialOptions).length === 0) {
+            console.error('No initial options received');
+            document.getElementById('parameters-container').innerHTML =
+                '<p style="color: red;">Error: No parameters found for this product</p>';
+            return;
+        }
+
+        new ProductConfigurator({{ product.id }}, initialOptions);
+    });
+
+    // Add to cart functionality
+    document.getElementById('add-to-cart-btn').addEventListener('click', function() {
+        alert('Product added to cart! (This is just a demo)');
+    });
+</script>
+</body>
+</html>
